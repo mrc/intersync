@@ -1,0 +1,29 @@
+* intersync
+Look at a bunch of directories on a source path, and if they exist on
+the destination path, rsync the files across.
+
+Useful for automatically filing stuff.
+
+* examples
+#+BEGIN_SRC sh
+intersync -c intersync.conf
+#+END_SRC
+
+* configuration
+#+BEGIN_SRC js-mode
+{
+    "logging":
+    {
+        "filename": "intersync.log",
+        "level": "DEBUG"
+    },
+
+    "source": "/mnt/intersync",
+    "destinations":
+    [
+        "/data/A",
+        "/data/B",
+        "/data/C"
+    ]
+}
+#+END_SRC

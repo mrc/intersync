@@ -1,0 +1,68 @@
+#!/usr/bin/env python2.7
+import os
+import sys
+import subprocess
+import logging
+import logging.handlers
+import argparse
+from config import Config
+
+_logger_name="intersync"
+
+def logged_system(command):
+    logger = logging.getLogger(_logger_name)
+    logger.debug(command)
+    output = subprocess.check_output(command, shell=True)
+    for line in (l.rstrip() for l in output.splitlines(True)):
+        logger.debug('  '+line)
+
+def rsync(source, destination, includes):
+    source_options = ' '.join(['"%s/%s"' % (source, i) for i in includes])
+    command = ' '.join([
+            'rsync',
+            # '--dry-run',
+            # '-rlptDv',
+            '-rv',
+            '--size-only',
+            '--human-readable',
+            # '--modify-window=1',
+            source_options,
+            '"'+destination+'"',
+            ])
+    logged_system(command)
+
+def toplevel_directories(path):
+    dirs = os.walk(path).next()[1]
+    return dirs
+
+def setup_logging(config):
+    logger = logging.getLogger(_logger_name)
+
+    rotating_log = logging.handlers.RotatingFileHandler(
+        config.logging['filename'],
+        backupCount=5)
+    rotating_log.doRollover()
+
+    formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
+    rotating_log.setFormatter(formatter)
+
+    logger.addHandler(rotating_log)
+    logger.setLevel(config.logging['level'])
+
+    logger.debug("Running")
+
+if __name__=='__main__':
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("-c", "--config", help="config file", default="intersync.conf")
+    args = argparser.parse_args()
+
+    config = Config(args.config)
+    setup_logging(config)
+
+    source_dirs = set(toplevel_directories(config.source))
+
+    for destination in config.destinations:
+        destination_dirs = set(toplevel_directories(destination))
+        intersection_dirs = destination_dirs.intersection(source_dirs)
+        if intersection_dirs:
+            rsync(config.source, destination, intersection_dirs)
